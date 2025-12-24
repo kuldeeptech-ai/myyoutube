@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>YouTube Music Lite</title>
+<title>YouTube Music</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -14,8 +14,11 @@
   <div class="logo">YT Music</div>
 
   <div class="search-box">
-    <input id="searchInput" placeholder="Search songs on YouTube">
+    <input id="searchInput" placeholder="Search music"
+      oninput="liveSuggest(this.value)">
     <button onclick="search()">🔍</button>
+
+    <div id="suggestions"></div>
   </div>
 
   <button class="theme-btn" onclick="toggleTheme()">🌙</button>
@@ -26,15 +29,15 @@
   <div id="player"></div>
 </div>
 
-<!-- RESULTS -->
-<div id="results"></div>
+<!-- FEED -->
+<div id="feed"></div>
 
-<!-- BOTTOM NAV (MOBILE) -->
+<!-- BOTTOM NAV -->
 <nav class="bottom-nav">
-  <button>🏠<span>Home</span></button>
-  <button>▶<span>Shorts</span></button>
-  <button>🎵<span>Music</span></button>
-  <button>⚙<span>Settings</span></button>
+  <button onclick="loadHome()">🏠<span>Home</span></button>
+  <button onclick="loadShorts()">▶<span>Shorts</span></button>
+  <button onclick="loadMusic()">🎵<span>Music</span></button>
+  <button onclick="loadSettings()">⚙<span>Settings</span></button>
 </nav>
 
 <script src="https://www.youtube.com/iframe_api"></script>
