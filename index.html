@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>YouTube Music Lite</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body class="dark">
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <div class="logo">YT Music</div>
+
+  <div class="search-box">
+    <input id="searchInput" placeholder="Search songs on YouTube">
+    <button onclick="search()">🔍</button>
+  </div>
+
+  <button class="theme-btn" onclick="toggleTheme()">🌙</button>
+</header>
+
+<!-- PLAYER -->
+<div class="player-wrap">
+  <div id="player"></div>
+</div>
+
+<!-- RESULTS -->
+<div id="results"></div>
+
+<!-- BOTTOM NAV (MOBILE) -->
+<nav class="bottom-nav">
+  <button>🏠<span>Home</span></button>
+  <button>▶<span>Shorts</span></button>
+  <button>🎵<span>Music</span></button>
+  <button>⚙<span>Settings</span></button>
+</nav>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script src="script.js"></script>
+</body>
+</html>
