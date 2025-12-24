@@ -1,46 +1,310 @@
 <!DOCTYPE html>
 <html lang="en">
+  <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff0000">
 <head>
 <meta charset="UTF-8">
 <title>YouTube Music</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="style.css">
+
+<style>
+body{
+  margin:0;
+  font-family:system-ui;
+  background:#0b0b0b;
+  color:#fff;
+}
+
+/* HEADER */
+header{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  padding:12px;
+  background:#141414;
+  position:sticky;
+  top:0;
+  z-index:10;
+}
+.logo{color:red;font-weight:700;font-size:18px}
+.search{flex:1;position:relative}
+.search input{
+  width:100%;
+  padding:10px;
+  background:#000;
+  color:#fff;
+  border:1px solid #333;
+  font-size:14px;
+}
+.suggest{
+  position:absolute;
+  top:42px;
+  left:0;
+  right:0;
+  background:#1a1a1a;
+  z-index:20;
+}
+.suggest div{
+  padding:10px;
+  cursor:pointer;
+}
+.suggest div:hover{background:#333}
+
+/* PLAYER */
+.player-wrap{
+  max-width:900px;
+  margin:14px auto;
+  aspect-ratio:16/9;
+  border-radius:16px;
+  overflow:hidden;
+}
+.player-wrap iframe{width:100%;height:100%}
+
+/* MINI PLAYER (BIGGER) */
+.player-wrap.mini{
+  position:fixed;
+  bottom:90px;
+  right:16px;
+  width:260px;
+  aspect-ratio:16/9;
+  z-index:50;
+  box-shadow:0 0 18px rgba(0,0,0,.8);
+}
+
+/* FEED */
+.feed{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+  gap:12px;
+  padding:12px;
+}
+.card{
+  background:#141414;
+  border-radius:12px;
+  padding:8px;
+  cursor:pointer;
+}
+.card img{
+  width:100%;
+  border-radius:8px;
+}
+.card span{
+  display:block;
+  font-size:13px;
+  margin-top:6px;
+}
+
+/* SHORTS */
+.shorts .card{aspect-ratio:9/16}
+.shorts img{height:100%;object-fit:cover}
+
+/* BOTTOM NAV (BIGGER & PREMIUM) */
+nav{
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  display:flex;
+  justify-content:space-around;
+  background:#111;
+  padding:14px 0;
+}
+nav button{
+  background:none;
+  border:none;
+  color:#fff;
+  font-size:14px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+}
+nav button span{
+  font-size:12px;
+  opacity:.85;
+}
+
+/* HELPERS */
+.hidden{display:none}
+.spacer{height:110px}
+</style>
 </head>
 
-<body class="dark">
+<body>
 
-<!-- TOP BAR -->
-<header class="topbar">
+<header>
   <div class="logo">YT Music</div>
-
-  <div class="search-box">
-    <input id="searchInput" placeholder="Search music"
-      oninput="liveSuggest(this.value)">
-    <button onclick="search()">🔍</button>
-
-    <div id="suggestions"></div>
+  <div class="search">
+    <input id="q"
+      placeholder="Search videos…"
+      oninput="showSuggestions(this.value)"
+      onkeydown="if(event.key==='Enter')goSearch()">
+    <div id="sug" class="suggest"></div>
   </div>
-
-  <button class="theme-btn" onclick="toggleTheme()">🌙</button>
 </header>
 
 <!-- PLAYER -->
-<div class="player-wrap">
-  <div id="player"></div>
+<div id="playerWrap" class="player-wrap hidden">
+  <iframe id="player"
+    frameborder="0"
+    allow="autoplay; encrypted-media"
+    allowfullscreen></iframe>
 </div>
 
 <!-- FEED -->
-<div id="feed"></div>
+<div id="feed" class="feed"></div>
+<div class="spacer"></div>
 
-<!-- BOTTOM NAV -->
-<nav class="bottom-nav">
-  <button onclick="loadHome()">🏠<span>Home</span></button>
-  <button onclick="loadShorts()">▶<span>Shorts</span></button>
-  <button onclick="loadMusic()">🎵<span>Music</span></button>
-  <button onclick="loadSettings()">⚙<span>Settings</span></button>
+<!-- BOTTOM MENU -->
+<nav>
+  <button onclick="goHome()">🏠<span>Home</span></button>
+  <button onclick="goShorts()">▶<span>Shorts</span></button>
+  <button onclick="goSearch()">🔍<span>Search</span></button>
+  <button onclick="openSettings()">⚙<span>Settings</span></button>
 </nav>
 
-<script src="https://www.youtube.com/iframe_api"></script>
-<script src="script.js"></script>
+<script>
+/* ================= CONFIG ================= */
+const API_KEY = "AIzaSyAk-wgMeuum8pQVhhOTwv2j1lAMe0LcFy8";
+const ORIGIN = location.origin;
+
+/* ================= STATE ================= */
+let mode = "home";
+let nextPageToken = "";
+
+const feed = document.getElementById("feed");
+const player = document.getElementById("player");
+const playerWrap = document.getElementById("playerWrap");
+const sugBox = document.getElementById("sug");
+
+/* ================= VIDEO ID SAFE ================= */
+function extractVideoId(item){
+  if(!item || !item.id) return null;
+  if(typeof item.id === "string") return item.id;
+  if(item.id.videoId) return item.id.videoId;
+  return null;
+}
+
+/* ================= PLAY ================= */
+function playItem(item){
+  const videoId = extractVideoId(item);
+  if(!videoId) return;
+
+  playerWrap.classList.remove("hidden");
+
+  player.src = "";
+  setTimeout(()=>{
+    player.src =
+      `https://www.youtube-nocookie.com/embed/${videoId}` +
+      `?autoplay=1&rel=0&modestbranding=1&origin=${ORIGIN}`;
+  }, 50);
+}
+
+/* ================= SUGGESTIONS ================= */
+function showSuggestions(q){
+  if(!q){
+    sugBox.innerHTML="";
+    return;
+  }
+
+  fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=6&q=${encodeURIComponent(q)}&key=${API_KEY}`)
+  .then(r=>r.json())
+  .then(d=>{
+    sugBox.innerHTML="";
+    d.items.forEach(item=>{
+      const div=document.createElement("div");
+      div.textContent=item.snippet.title;
+      div.onclick=()=>{
+        document.getElementById("q").value=item.snippet.title;
+        goSearch();
+        sugBox.innerHTML="";
+      };
+      sugBox.appendChild(div);
+    });
+  });
+}
+
+/* ================= MODES ================= */
+function resetFeed(){
+  feed.innerHTML="";
+  nextPageToken="";
+}
+
+function goHome(){
+  mode="home";
+  resetFeed();
+  feed.className="feed";
+  loadMore();
+}
+
+function goSearch(){
+  mode="search";
+  resetFeed();
+  feed.className="feed";
+  loadMore();
+}
+
+function goShorts(){
+  mode="shorts";
+  resetFeed();
+  feed.className="feed shorts";
+  loadMore();
+}
+
+/* ================= DATA ================= */
+function buildUrl(){
+  if(mode==="home"){
+    return `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=IN&videoCategoryId=10&maxResults=12&pageToken=${nextPageToken}&key=${API_KEY}`;
+  }
+
+  if(mode==="shorts"){
+    return `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoDuration=short&q=shorts+music&maxResults=12&pageToken=${nextPageToken}&key=${API_KEY}`;
+  }
+
+  const q=document.getElementById("q").value||"music";
+  return `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(q)}&maxResults=12&pageToken=${nextPageToken}&key=${API_KEY}`;
+}
+
+function loadMore(){
+  fetch(buildUrl())
+  .then(r=>r.json())
+  .then(d=>{
+    nextPageToken=d.nextPageToken||"";
+    d.items.forEach(item=>{
+      const id = extractVideoId(item);
+      if(!id) return;
+
+      const c=document.createElement("div");
+      c.className="card";
+      c.innerHTML=`
+        <img src="${item.snippet.thumbnails.medium.url}">
+        <span>${item.snippet.title}</span>`;
+      c.onclick=()=>playItem(item);
+      feed.appendChild(c);
+    });
+  });
+}
+
+/* ================= SCROLL ================= */
+window.addEventListener("scroll",()=>{
+  if(!playerWrap.classList.contains("hidden")){
+    if(window.scrollY>240) playerWrap.classList.add("mini");
+    else playerWrap.classList.remove("mini");
+  }
+
+  if(window.innerHeight+window.scrollY>document.body.offsetHeight-200){
+    loadMore();
+  }
+});
+
+/* SETTINGS */
+function openSettings(){
+  alert("Settings coming soon");
+}
+
+/* INIT */
+goHome();
+</script>
+
 </body>
 </html>
