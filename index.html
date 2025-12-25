@@ -1,49 +1,239 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>YT Music – Home</title>
-<link rel="stylesheet" href="assets/common.css">
+<title>YT Music</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{margin:0;font-family:system-ui;background:#0b0b0b;color:#fff}
+header{padding:12px;background:#141414;font-size:18px;font-weight:700;color:red}
+
+/* SECTIONS */
+.section{display:none}
+.section.active{display:block}
+
+/* PLAYER */
+#playerBox{
+  max-width:900px;
+  margin:14px auto;
+  border-radius:24px;
+  overflow:hidden;
+}
+#playerBox iframe{
+  width:100%;
+  aspect-ratio:16/9;
+  border:0;
+}
+
+/* MINI */
+#playerBox.mini{
+  position:fixed;
+  bottom:80px;
+  right:16px;
+  width:260px;
+  z-index:50;
+  box-shadow:0 0 18px rgba(0,0,0,.8);
+}
+
+/* FEED */
+.feed{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+  gap:14px;
+  padding:12px;
+}
+.card{
+  background:#141414;
+  border:1px solid #333;
+  border-radius:16px;
+  padding:8px;
+  cursor:pointer;
+}
+.card img{width:100%;border-radius:12px}
+.card span{display:block;font-size:13px;margin-top:6px}
+
+/* SEARCH */
+.search-box{
+  display:flex;
+  gap:8px;
+  padding:12px;
+}
+.search-box input{
+  flex:1;
+  padding:10px;
+  background:#000;
+  color:#fff;
+  border:1px solid #333;
+  border-radius:10px;
+}
+.search-box button{
+  padding:10px 14px;
+  background:red;
+  border:none;
+  border-radius:10px;
+  color:#fff;
+}
+
+/* NAV */
+nav{
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  background:#111;
+  display:flex;
+  justify-content:space-around;
+  padding:14px 0;
+}
+nav button{
+  background:none;
+  border:none;
+  color:#fff;
+  font-size:14px;
+}
+
+.spacer{height:120px}
+</style>
 </head>
+
 <body>
 
 <header>YT Music</header>
 
-<div id="feed" class="feed"></div>
+<!-- PLAYER -->
+<div id="playerBox" class="section">
+  <iframe id="player" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+</div>
+
+<!-- HOME -->
+<div id="home" class="section feed"></div>
+
+<!-- SEARCH -->
+<div id="search" class="section">
+  <div class="search-box">
+    <input id="q" placeholder="Search songs…">
+    <button onclick="doSearch()">Search</button>
+  </div>
+  <div id="searchFeed" class="feed"></div>
+</div>
+
+<div class="spacer"></div>
 
 <nav>
-  <a href="index.html">🏠 Home</a>
-  <a href="search.html">🔍 Search</a>
+  <button onclick="goHome()">🏠 Home</button>
+  <button onclick="goSearch()">🔍 Search</button>
 </nav>
 
 <script>
-const API_KEY = "AIzaSyDegWP6p4oz6QHaKe55UHE50KGbviyycfU";
-let pageToken = "";
-const feed = document.getElementById("feed");
+/* CONFIG */
+const API_KEY = "PASTE_YOUR_API_KEY_HERE";
+const ORIGIN = location.origin;
 
+/* ELEMENTS */
+const sections = {
+  home: document.getElementById("home"),
+  search: document.getElementById("search"),
+  watch: document.getElementById("playerBox")
+};
+const player = document.getElementById("player");
+const searchFeed = document.getElementById("searchFeed");
+
+/* STATE */
+let state = "home";
+let homeToken = "";
+let searchToken = "";
+let currentVideo = null;
+
+/* HELPERS */
+function show(name){
+  Object.values(sections).forEach(s=>s.classList.remove("active"));
+  sections[name].classList.add("active");
+  state = name;
+}
+
+/* VIDEO ID */
+function vid(i){
+  if(!i||!i.id) return null;
+  return typeof i.id==="string"?i.id:i.id.videoId;
+}
+
+/* PLAYER */
+function play(videoId, push=true){
+  currentVideo = videoId;
+  show("watch");
+  player.src =
+    `https://www.youtube-nocookie.com/embed/${videoId}`+
+    `?autoplay=1&rel=0&origin=${ORIGIN}`;
+  if(push) history.pushState({s:"watch",v:videoId},"",`#watch=${videoId}`);
+}
+
+/* NAV */
+function goHome(){
+  show("home");
+  if(!sections.home.innerHTML) loadHome();
+  history.pushState({s:"home"},"","#home");
+}
+function goSearch(){
+  show("search");
+  history.pushState({s:"search"},"","#search");
+}
+
+/* BACK */
+window.onpopstate = e=>{
+  if(!e.state) return goHome();
+  if(e.state.s==="home") show("home");
+  if(e.state.s==="search") show("search");
+  if(e.state.s==="watch") play(e.state.v,false);
+};
+
+/* HOME LOAD */
 function loadHome(){
-  fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=IN&videoCategoryId=10&maxResults=12&pageToken=${pageToken}&key=${API_KEY}`)
+  fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=IN&videoCategoryId=10&maxResults=12&pageToken=${homeToken}&key=${API_KEY}`)
   .then(r=>r.json()).then(d=>{
-    pageToken = d.nextPageToken || "";
+    homeToken=d.nextPageToken||"";
     d.items.forEach(v=>{
       const c=document.createElement("div");
       c.className="card";
-      c.innerHTML = `
-        <img src="${v.snippet.thumbnails.medium.url}">
-        <span>${v.snippet.title}</span>`;
-      c.onclick = ()=> location.href = `player.html?id=${v.id}`;
-      feed.appendChild(c);
+      c.innerHTML=`<img src="${v.snippet.thumbnails.medium.url}"><span>${v.snippet.title}</span>`;
+      c.onclick=()=>play(v.id);
+      sections.home.appendChild(c);
     });
   });
 }
 
-window.onscroll = ()=>{
-  if(innerHeight + scrollY > document.body.offsetHeight - 200){
+/* SEARCH */
+function doSearch(){
+  const q=document.getElementById("q").value.trim();
+  if(!q) return;
+  searchFeed.innerHTML="";
+  searchToken="";
+  fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(q)}&maxResults=12&key=${API_KEY}`)
+  .then(r=>r.json()).then(d=>{
+    d.items.forEach(v=>{
+      const c=document.createElement("div");
+      c.className="card";
+      c.innerHTML=`<img src="${v.snippet.thumbnails.medium.url}"><span>${v.snippet.title}</span>`;
+      c.onclick=()=>play(vid(v));
+      searchFeed.appendChild(c);
+    });
+  });
+}
+
+/* MINI PLAYER */
+window.addEventListener("scroll",()=>{
+  const box=document.getElementById("playerBox");
+  if(state==="watch" && scrollY>220) box.classList.add("mini");
+  else box.classList.remove("mini");
+
+  if(state==="home" && innerHeight+scrollY>document.body.offsetHeight-200){
     loadHome();
   }
-};
+});
 
-loadHome();
+/* INIT */
+goHome();
 </script>
+
 </body>
 </html>
