@@ -1,0 +1,9 @@
+body{margin:0;background:#0b0b0b;color:#fff;font-family:system-ui}
+header{padding:12px;background:#141414}
+.feed{display:grid;grid-template-columns:repeat(auto-fill,160px);gap:12px;padding:12px}
+.card{background:#141414;border:1px solid #333;border-radius:14px;padding:8px}
+.card img{width:100%;border-radius:10px}
+.player.curved{max-width:900px;margin:14px auto;border-radius:24px;overflow:hidden}
+.player iframe{width:100%;aspect-ratio:16/9;border:0}
+nav{position:fixed;bottom:0;left:0;right:0;background:#111;display:flex;justify-content:space-around;padding:12px}
+nav a,nav button{color:#fff;background:none;border:none;text-decoration:none}
