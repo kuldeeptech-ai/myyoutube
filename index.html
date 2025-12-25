@@ -1,225 +1,49 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>YT Music</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<style>
-body{margin:0;font-family:system-ui;background:#0b0b0b;color:#fff}
-
-/* HEADER */
-header{
-  display:flex;align-items:center;
-  padding:12px;background:#141414;
-  position:sticky;top:0;z-index:10
-}
-.logo{color:red;font-weight:700;font-size:18px}
-
-/* PLAYER */
-.player-page{
-  max-width:900px;margin:16px auto;
-  border-radius:24px;overflow:hidden;
-  display:none;
-}
-.player-page iframe{
-  width:100%;aspect-ratio:16/9;border:0
-}
-
-/* MINI PLAYER */
-.player-page.mini{
-  position:fixed;
-  bottom:90px;right:16px;
-  width:280px;
-  z-index:50;
-  box-shadow:0 0 20px rgba(0,0,0,.8);
-}
-
-/* FEEDS */
-.feed{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
-  gap:14px;padding:12px
-}
-.card{
-  background:#141414;
-  border:1px solid #2a2a2a;
-  border-radius:16px;
-  padding:8px;
-  cursor:pointer
-}
-.card img{width:100%;border-radius:12px}
-.card span{display:block;font-size:13px;margin-top:6px}
-
-/* SEARCH PAGE */
-.search-page{
-  padding:12px;display:none
-}
-.search-box{
-  display:flex;gap:8px;margin-bottom:10px
-}
-.search-box input{
-  flex:1;padding:10px;
-  background:#000;color:#fff;
-  border:1px solid #333;border-radius:10px
-}
-.search-box button{
-  padding:10px 14px;
-  background:red;border:none;
-  border-radius:10px;color:#fff
-}
-
-/* NAV */
-nav{
-  position:fixed;bottom:0;left:0;right:0;
-  display:flex;justify-content:space-around;
-  background:#111;padding:14px 0
-}
-nav button{
-  background:none;border:none;color:#fff;
-  font-size:14px;display:flex;
-  flex-direction:column;align-items:center
-}
-
-.hidden{display:none}
-.spacer{height:120px}
-</style>
+<title>YT Music – Home</title>
+<link rel="stylesheet" href="assets/common.css">
 </head>
-
 <body>
 
-<header>
-  <div class="logo">YT Music</div>
-</header>
+<header>YT Music</header>
 
-<!-- PLAYER PAGE -->
-<div id="playerPage" class="player-page">
-  <iframe id="player"
-    allow="autoplay; encrypted-media"
-    allowfullscreen></iframe>
-</div>
-
-<!-- HOME -->
-<div id="homeFeed" class="feed"></div>
-
-<!-- SEARCH -->
-<div id="searchPage" class="search-page">
-  <div class="search-box">
-    <input id="searchInput" placeholder="Search songs…">
-    <button onclick="doSearch()">Search</button>
-  </div>
-  <div id="searchFeed" class="feed"></div>
-</div>
-
-<div class="spacer"></div>
+<div id="feed" class="feed"></div>
 
 <nav>
-  <button onclick="goHome()">🏠<span>Home</span></button>
-  <button onclick="openSearch()">🔍<span>Search</span></button>
+  <a href="index.html">🏠 Home</a>
+  <a href="search.html">🔍 Search</a>
 </nav>
 
 <script>
-/* ================= CONFIG ================= */
-const API_KEY="AIzaSyDegWP6p4oz6QHaKe55UHE50KGbviyycfU";
-const ORIGIN=location.origin;
+const API_KEY = "AIzaSyDegWP6p4oz6QHaKe55UHE50KGbviyycfU";
+let pageToken = "";
+const feed = document.getElementById("feed");
 
-/* ================= ELEMENTS ================= */
-const homeFeed=document.getElementById("homeFeed");
-const searchPage=document.getElementById("searchPage");
-const searchFeed=document.getElementById("searchFeed");
-const playerPage=document.getElementById("playerPage");
-const player=document.getElementById("player");
-
-/* ================= STATE ================= */
-let homePageToken="";
-let searchPageToken="";
-let currentMode="home";
-let currentQuery="";
-let currentVideo=null;
-
-/* ================= ROUTER ================= */
-function showHome(){
-  currentMode="home";
-  homeFeed.classList.remove("hidden");
-  searchPage.style.display="none";
-  if(!homeFeed.innerHTML) loadHome();
-}
-function openSearch(){
-  currentMode="search";
-  searchPage.style.display="block";
-  homeFeed.classList.add("hidden");
-}
-function openPlayer(videoId){
-  currentVideo=videoId;
-  playerPage.style.display="block";
-  playerPage.classList.remove("mini");
-  player.src=
-    `https://www.youtube-nocookie.com/embed/${videoId}`+
-    `?autoplay=1&rel=0&origin=${ORIGIN}`;
-}
-
-/* ================= VIDEO ID ================= */
-function vid(item){
-  if(!item||!item.id) return null;
-  return typeof item.id==="string"?item.id:item.id.videoId;
-}
-
-/* ================= HOME LOAD ================= */
 function loadHome(){
-  fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=IN&videoCategoryId=10&maxResults=12&pageToken=${homePageToken}&key=${API_KEY}`)
-  .then(r=>r.json())
-  .then(d=>{
-    homePageToken=d.nextPageToken||"";
-    d.items.forEach(item=>{
-      const id=vid(item);
+  fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=IN&videoCategoryId=10&maxResults=12&pageToken=${pageToken}&key=${API_KEY}`)
+  .then(r=>r.json()).then(d=>{
+    pageToken = d.nextPageToken || "";
+    d.items.forEach(v=>{
       const c=document.createElement("div");
       c.className="card";
-      c.innerHTML=`<img src="${item.snippet.thumbnails.medium.url}"><span>${item.snippet.title}</span>`;
-      c.onclick=()=>openPlayer(id);
-      homeFeed.appendChild(c);
+      c.innerHTML = `
+        <img src="${v.snippet.thumbnails.medium.url}">
+        <span>${v.snippet.title}</span>`;
+      c.onclick = ()=> location.href = `player.html?id=${v.id}`;
+      feed.appendChild(c);
     });
   });
 }
 
-/* ================= SEARCH ================= */
-function doSearch(){
-  currentQuery=document.getElementById("searchInput").value.trim();
-  searchFeed.innerHTML="";
-  searchPageToken="";
-  loadSearch();
-}
-function loadSearch(){
-  if(!currentQuery) return;
-  fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(currentQuery)}&maxResults=12&pageToken=${searchPageToken}&key=${API_KEY}`)
-  .then(r=>r.json())
-  .then(d=>{
-    searchPageToken=d.nextPageToken||"";
-    d.items.forEach(item=>{
-      const id=vid(item);
-      const c=document.createElement("div");
-      c.className="card";
-      c.innerHTML=`<img src="${item.snippet.thumbnails.medium.url}"><span>${item.snippet.title}</span>`;
-      c.onclick=()=>openPlayer(id);
-      searchFeed.appendChild(c);
-    });
-  });
-}
-
-/* ================= SCROLL ================= */
-window.addEventListener("scroll",()=>{
-  if(player.src){
-    if(window.scrollY>240) playerPage.classList.add("mini");
-    else playerPage.classList.remove("mini");
+window.onscroll = ()=>{
+  if(innerHeight + scrollY > document.body.offsetHeight - 200){
+    loadHome();
   }
-  if(window.innerHeight+window.scrollY>document.body.offsetHeight-200){
-    if(currentMode==="home") loadHome();
-    if(currentMode==="search") loadSearch();
-  }
-});
+};
 
-/* INIT */
-showHome();
+loadHome();
 </script>
-
 </body>
 </html>
