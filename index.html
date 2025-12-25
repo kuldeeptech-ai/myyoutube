@@ -1,132 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
-  <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#ff0000">
 <head>
 <meta charset="UTF-8">
-<title>YouTube Music</title>
+<title>YT Music</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body{
-  margin:0;
-  font-family:system-ui;
-  background:#0b0b0b;
-  color:#fff;
-}
-
-/* HEADER */
+body{margin:0;font-family:system-ui;background:#0b0b0b;color:#fff}
 header{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  padding:12px;
-  background:#141414;
-  position:sticky;
-  top:0;
-  z-index:10;
+  display:flex;gap:10px;align-items:center;
+  padding:12px;background:#141414;position:sticky;top:0;z-index:10
 }
 .logo{color:red;font-weight:700;font-size:18px}
-.search{flex:1;position:relative}
-.search input{
-  width:100%;
-  padding:10px;
-  background:#000;
-  color:#fff;
-  border:1px solid #333;
-  font-size:14px;
+
+/* SEARCH BOX */
+.search-box{
+  flex:1;display:flex;gap:6px
 }
-.suggest{
-  position:absolute;
-  top:42px;
-  left:0;
-  right:0;
-  background:#1a1a1a;
-  z-index:20;
+.search-box input{
+  flex:1;padding:10px;background:#000;color:#fff;
+  border:1px solid #333;border-radius:8px
 }
-.suggest div{
-  padding:10px;
-  cursor:pointer;
+.search-box button{
+  padding:10px 14px;border:none;border-radius:8px;
+  background:red;color:#fff;font-size:14px
 }
-.suggest div:hover{background:#333}
 
 /* PLAYER */
 .player-wrap{
-  max-width:900px;
-  margin:14px auto;
-  aspect-ratio:16/9;
-  border-radius:16px;
-  overflow:hidden;
+  max-width:900px;margin:14px auto;
+  aspect-ratio:16/9;border-radius:16px;
+  overflow:hidden;display:none
 }
 .player-wrap iframe{width:100%;height:100%}
 
-/* MINI PLAYER (BIGGER) */
+/* MINI PLAYER (DRAGGABLE) */
 .player-wrap.mini{
-  position:fixed;
-  bottom:90px;
-  right:16px;
-  width:260px;
-  aspect-ratio:16/9;
-  z-index:50;
-  box-shadow:0 0 18px rgba(0,0,0,.8);
+  position:fixed;bottom:100px;right:16px;
+  width:260px;z-index:50;
+  cursor:move;box-shadow:0 0 18px rgba(0,0,0,.8)
 }
 
 /* FEED */
 .feed{
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
-  gap:12px;
-  padding:12px;
+  gap:14px;padding:12px
 }
 .card{
-  background:#141414;
-  border-radius:12px;
-  padding:8px;
-  cursor:pointer;
+  background:#141414;border:1px solid #2a2a2a;
+  border-radius:14px;padding:8px;cursor:pointer
 }
-.card img{
-  width:100%;
-  border-radius:8px;
-}
-.card span{
-  display:block;
-  font-size:13px;
-  margin-top:6px;
-}
+.card img{width:100%;border-radius:10px}
+.card span{display:block;font-size:13px;margin-top:6px}
 
-/* SHORTS */
-.shorts .card{aspect-ratio:9/16}
-.shorts img{height:100%;object-fit:cover}
-
-/* BOTTOM NAV (BIGGER & PREMIUM) */
+/* BOTTOM NAV */
 nav{
-  position:fixed;
-  bottom:0;
-  left:0;
-  right:0;
-  display:flex;
-  justify-content:space-around;
-  background:#111;
-  padding:14px 0;
+  position:fixed;bottom:0;left:0;right:0;
+  display:flex;justify-content:space-around;
+  background:#111;padding:14px 0
 }
 nav button{
-  background:none;
-  border:none;
-  color:#fff;
-  font-size:14px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:4px;
-}
-nav button span{
-  font-size:12px;
-  opacity:.85;
+  background:none;border:none;color:#fff;
+  font-size:14px;display:flex;
+  flex-direction:column;align-items:center
 }
 
-/* HELPERS */
-.hidden{display:none}
-.spacer{height:110px}
+.spacer{height:120px}
 </style>
 </head>
 
@@ -134,19 +74,15 @@ nav button span{
 
 <header>
   <div class="logo">YT Music</div>
-  <div class="search">
-    <input id="q"
-      placeholder="Search videos…"
-      oninput="showSuggestions(this.value)"
-      onkeydown="if(event.key==='Enter')goSearch()">
-    <div id="sug" class="suggest"></div>
+  <div class="search-box">
+    <input id="q" placeholder="Search songs…">
+    <button onclick="doSearch()">Search</button>
   </div>
 </header>
 
 <!-- PLAYER -->
-<div id="playerWrap" class="player-wrap hidden">
+<div id="playerWrap" class="player-wrap">
   <iframe id="player"
-    frameborder="0"
     allow="autoplay; encrypted-media"
     allowfullscreen></iframe>
 </div>
@@ -155,12 +91,10 @@ nav button span{
 <div id="feed" class="feed"></div>
 <div class="spacer"></div>
 
-<!-- BOTTOM MENU -->
+<!-- NAV -->
 <nav>
   <button onclick="goHome()">🏠<span>Home</span></button>
-  <button onclick="goShorts()">▶<span>Shorts</span></button>
   <button onclick="goSearch()">🔍<span>Search</span></button>
-  <button onclick="openSettings()">⚙<span>Settings</span></button>
 </nav>
 
 <script>
@@ -169,100 +103,79 @@ const API_KEY = "AIzaSyDegWP6p4oz6QHaKe55UHE50KGbviyycfU";
 const ORIGIN = location.origin;
 
 /* ================= STATE ================= */
-let mode = "home";
-let nextPageToken = "";
+let nextPageToken="";
+let mode="home";
 
-const feed = document.getElementById("feed");
-const player = document.getElementById("player");
-const playerWrap = document.getElementById("playerWrap");
-const sugBox = document.getElementById("sug");
+const feed=document.getElementById("feed");
+const playerWrap=document.getElementById("playerWrap");
+const player=document.getElementById("player");
 
-/* ================= VIDEO ID SAFE ================= */
-function extractVideoId(item){
-  if(!item || !item.id) return null;
-  if(typeof item.id === "string") return item.id;
+/* ================= VIDEO ID ================= */
+function getVideoId(item){
+  if(!item||!item.id) return null;
+  if(typeof item.id==="string") return item.id;
   if(item.id.videoId) return item.id.videoId;
   return null;
 }
 
-/* ================= PLAY ================= */
-function playItem(item){
-  const videoId = extractVideoId(item);
+/* ================= ROUTED PLAY ================= */
+function playVideo(videoId, push=true){
   if(!videoId) return;
 
-  playerWrap.classList.remove("hidden");
+  playerWrap.style.display="block";
+  player.src=
+    `https://www.youtube-nocookie.com/embed/${videoId}`+
+    `?autoplay=1&rel=0&modestbranding=1&origin=${ORIGIN}`;
 
-  player.src = "";
-  setTimeout(()=>{
-    player.src =
-      `https://www.youtube-nocookie.com/embed/${videoId}` +
-      `?autoplay=1&rel=0&modestbranding=1&origin=${ORIGIN}`;
-  }, 50);
-}
-
-/* ================= SUGGESTIONS ================= */
-function showSuggestions(q){
-  if(!q){
-    sugBox.innerHTML="";
-    return;
+  if(push){
+    history.pushState(
+      {video:videoId},
+      "",
+      "#watch="+videoId
+    );
   }
-
-  fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=6&q=${encodeURIComponent(q)}&key=${API_KEY}`)
-  .then(r=>r.json())
-  .then(d=>{
-    sugBox.innerHTML="";
-    d.items.forEach(item=>{
-      const div=document.createElement("div");
-      div.textContent=item.snippet.title;
-      div.onclick=()=>{
-        document.getElementById("q").value=item.snippet.title;
-        goSearch();
-        sugBox.innerHTML="";
-      };
-      sugBox.appendChild(div);
-    });
-  });
 }
 
-/* ================= MODES ================= */
-function resetFeed(){
-  feed.innerHTML="";
-  nextPageToken="";
-}
+/* ================= ROUTER ================= */
+window.onpopstate = e => {
+  if(e.state && e.state.video){
+    playVideo(e.state.video,false);
+  }else{
+    playerWrap.style.display="none";
+    player.src="";
+  }
+};
 
-function goHome(){
-  mode="home";
-  resetFeed();
-  feed.className="feed";
-  loadMore();
-}
+/* ================= MINI PLAYER LOGIC ================= */
+window.addEventListener("scroll",()=>{
+  if(player.src){
+    if(window.scrollY>250) playerWrap.classList.add("mini");
+    else playerWrap.classList.remove("mini");
+  }
+});
 
-function goSearch(){
-  mode="search";
-  resetFeed();
-  feed.className="feed";
-  loadMore();
-}
-
-function goShorts(){
-  mode="shorts";
-  resetFeed();
-  feed.className="feed shorts";
-  loadMore();
-}
+/* DRAG */
+let drag=false,dx=0,dy=0;
+playerWrap.addEventListener("mousedown",e=>{
+  if(!playerWrap.classList.contains("mini")) return;
+  drag=true;
+  dx=e.clientX-playerWrap.offsetLeft;
+  dy=e.clientY-playerWrap.offsetTop;
+});
+window.addEventListener("mousemove",e=>{
+  if(!drag) return;
+  playerWrap.style.left=(e.clientX-dx)+"px";
+  playerWrap.style.top=(e.clientY-dy)+"px";
+});
+window.addEventListener("mouseup",()=>drag=false);
 
 /* ================= DATA ================= */
 function buildUrl(){
-  if(mode==="home"){
-    return `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=IN&videoCategoryId=10&maxResults=12&pageToken=${nextPageToken}&key=${API_KEY}`;
+  if(mode==="search"){
+    const q=document.getElementById("q").value||"music";
+    return `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(q)}&maxResults=12&pageToken=${nextPageToken}&key=${API_KEY}`;
   }
-
-  if(mode==="shorts"){
-    return `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoDuration=short&q=shorts+music&maxResults=12&pageToken=${nextPageToken}&key=${API_KEY}`;
-  }
-
-  const q=document.getElementById("q").value||"music";
-  return `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(q)}&maxResults=12&pageToken=${nextPageToken}&key=${API_KEY}`;
+  return `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=IN&videoCategoryId=10&maxResults=12&pageToken=${nextPageToken}&key=${API_KEY}`;
 }
 
 function loadMore(){
@@ -271,7 +184,7 @@ function loadMore(){
   .then(d=>{
     nextPageToken=d.nextPageToken||"";
     d.items.forEach(item=>{
-      const id = extractVideoId(item);
+      const id=getVideoId(item);
       if(!id) return;
 
       const c=document.createElement("div");
@@ -279,31 +192,39 @@ function loadMore(){
       c.innerHTML=`
         <img src="${item.snippet.thumbnails.medium.url}">
         <span>${item.snippet.title}</span>`;
-      c.onclick=()=>playItem(item);
+      c.onclick=()=>playVideo(id);
       feed.appendChild(c);
     });
   });
 }
 
-/* ================= SCROLL ================= */
-window.addEventListener("scroll",()=>{
-  if(!playerWrap.classList.contains("hidden")){
-    if(window.scrollY>240) playerWrap.classList.add("mini");
-    else playerWrap.classList.remove("mini");
-  }
+/* ================= NAV ================= */
+function goHome(){
+  mode="home";
+  feed.innerHTML="";
+  nextPageToken="";
+  history.pushState({}, "", "#home");
+  loadMore();
+}
 
-  if(window.innerHeight+window.scrollY>document.body.offsetHeight-200){
-    loadMore();
-  }
-});
+function goSearch(){
+  mode="search";
+  feed.innerHTML="";
+  nextPageToken="";
+  history.pushState({}, "", "#search");
+}
 
-/* SETTINGS */
-function openSettings(){
-  alert("Settings coming soon");
+function doSearch(){
+  goSearch();
+  loadMore();
 }
 
 /* INIT */
-goHome();
+if(location.hash.startsWith("#watch=")){
+  playVideo(location.hash.split("=")[1],false);
+}else{
+  goHome();
+}
 </script>
 
 </body>
