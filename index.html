@@ -13,7 +13,7 @@ header{
 }
 .logo{color:red;font-weight:700;font-size:18px}
 
-/* SEARCH BOX */
+/* SEARCH BAR */
 .search-box{
   flex:1;display:flex;gap:6px
 }
@@ -27,18 +27,19 @@ header{
 }
 
 /* PLAYER */
-.player-wrap{
+.player-container{
   max-width:900px;margin:14px auto;
   aspect-ratio:16/9;border-radius:16px;
   overflow:hidden;display:none
 }
-.player-wrap iframe{width:100%;height:100%}
+.player-container iframe{width:100%;height:100%}
 
-/* MINI PLAYER (DRAGGABLE) */
-.player-wrap.mini{
-  position:fixed;bottom:100px;right:16px;
-  width:260px;z-index:50;
-  cursor:move;box-shadow:0 0 18px rgba(0,0,0,.8)
+/* MINI PLAYER */
+.player-container.mini{
+  position:fixed;bottom:90px;right:16px;
+  width:260px;aspect-ratio:16/9;
+  z-index:50;cursor:move;
+  box-shadow:0 0 18px rgba(0,0,0,.8)
 }
 
 /* FEED */
@@ -54,7 +55,11 @@ header{
 .card img{width:100%;border-radius:10px}
 .card span{display:block;font-size:13px;margin-top:6px}
 
-/* BOTTOM NAV */
+/* SEARCH PAGE */
+.search-page{padding:12px}
+.search-results{margin-top:10px}
+
+/* NAV */
 nav{
   position:fixed;bottom:0;left:0;right:0;
   display:flex;justify-content:space-around;
@@ -66,6 +71,7 @@ nav button{
   flex-direction:column;align-items:center
 }
 
+.hidden{display:none}
 .spacer{height:120px}
 </style>
 </head>
@@ -75,25 +81,30 @@ nav button{
 <header>
   <div class="logo">YT Music</div>
   <div class="search-box">
-    <input id="q" placeholder="Search songs…">
-    <button onclick="doSearch()">Search</button>
+    <input id="searchInput" placeholder="Search songs…">
+    <button onclick="goSearch()">Search</button>
   </div>
 </header>
 
 <!-- PLAYER -->
-<div id="playerWrap" class="player-wrap">
+<div id="playerBox" class="player-container">
   <iframe id="player"
     allow="autoplay; encrypted-media"
     allowfullscreen></iframe>
 </div>
 
-<!-- FEED -->
-<div id="feed" class="feed"></div>
+<!-- HOME -->
+<div id="homePage" class="feed"></div>
+
+<!-- SEARCH PAGE -->
+<div id="searchPage" class="search-page hidden">
+  <div id="searchResults" class="feed"></div>
+</div>
+
 <div class="spacer"></div>
 
-<!-- NAV -->
 <nav>
-  <button onclick="goHome()">🏠<span>Home</span></button>
+  <button onclick="navigate('home')">🏠<span>Home</span></button>
   <button onclick="goSearch()">🔍<span>Search</span></button>
 </nav>
 
@@ -102,129 +113,130 @@ nav button{
 const API_KEY = "AIzaSyDegWP6p4oz6QHaKe55UHE50KGbviyycfU";
 const ORIGIN = location.origin;
 
+/* ================= ELEMENTS ================= */
+const playerBox = document.getElementById("playerBox");
+const player = document.getElementById("player");
+const homePage = document.getElementById("homePage");
+const searchPage = document.getElementById("searchPage");
+const searchResults = document.getElementById("searchResults");
+
 /* ================= STATE ================= */
-let nextPageToken="";
-let mode="home";
+let currentVideo = null;
+let nextPageToken = "";
 
-const feed=document.getElementById("feed");
-const playerWrap=document.getElementById("playerWrap");
-const player=document.getElementById("player");
+/* ================= ROUTER ================= */
+function navigate(page, data=null, push=true){
+  if(push){
+    history.pushState({page,data}, "", page==="home"?"#home":page==="search"?`#search?q=${data||""}`:`#watch=${data}`);
+  }
 
-/* ================= VIDEO ID ================= */
-function getVideoId(item){
-  if(!item||!item.id) return null;
-  if(typeof item.id==="string") return item.id;
-  if(item.id.videoId) return item.id.videoId;
-  return null;
+  homePage.classList.add("hidden");
+  searchPage.classList.add("hidden");
+
+  if(page==="home"){
+    homePage.classList.remove("hidden");
+    loadHome();
+  }
+
+  if(page==="search"){
+    searchPage.classList.remove("hidden");
+    loadSearch(data);
+    if(currentVideo) makeMini();
+  }
+
+  if(page==="watch"){
+    playVideo(data,false);
+  }
 }
 
-/* ================= ROUTED PLAY ================= */
+window.onpopstate = e=>{
+  if(!e.state) return navigate("home",null,false);
+  navigate(e.state.page, e.state.data, false);
+};
+
+/* ================= PLAYER ================= */
 function playVideo(videoId, push=true){
   if(!videoId) return;
+  currentVideo = videoId;
 
-  playerWrap.style.display="block";
-  player.src=
+  playerBox.style.display="block";
+  playerBox.classList.remove("mini");
+
+  player.src =
     `https://www.youtube-nocookie.com/embed/${videoId}`+
     `?autoplay=1&rel=0&modestbranding=1&origin=${ORIGIN}`;
 
-  if(push){
-    history.pushState(
-      {video:videoId},
-      "",
-      "#watch="+videoId
-    );
-  }
+  if(push) navigate("watch", videoId);
 }
 
-/* ================= ROUTER ================= */
-window.onpopstate = e => {
-  if(e.state && e.state.video){
-    playVideo(e.state.video,false);
-  }else{
-    playerWrap.style.display="none";
-    player.src="";
-  }
-};
+function makeMini(){
+  playerBox.classList.add("mini");
+}
 
-/* ================= MINI PLAYER LOGIC ================= */
-window.addEventListener("scroll",()=>{
-  if(player.src){
-    if(window.scrollY>250) playerWrap.classList.add("mini");
-    else playerWrap.classList.remove("mini");
-  }
-});
-
-/* DRAG */
+/* ================= DRAG MINI ================= */
 let drag=false,dx=0,dy=0;
-playerWrap.addEventListener("mousedown",e=>{
-  if(!playerWrap.classList.contains("mini")) return;
+playerBox.addEventListener("mousedown",e=>{
+  if(!playerBox.classList.contains("mini")) return;
   drag=true;
-  dx=e.clientX-playerWrap.offsetLeft;
-  dy=e.clientY-playerWrap.offsetTop;
+  dx=e.clientX-playerBox.offsetLeft;
+  dy=e.clientY-playerBox.offsetTop;
 });
 window.addEventListener("mousemove",e=>{
   if(!drag) return;
-  playerWrap.style.left=(e.clientX-dx)+"px";
-  playerWrap.style.top=(e.clientY-dy)+"px";
+  playerBox.style.left=(e.clientX-dx)+"px";
+  playerBox.style.top=(e.clientY-dy)+"px";
 });
 window.addEventListener("mouseup",()=>drag=false);
 
 /* ================= DATA ================= */
-function buildUrl(){
-  if(mode==="search"){
-    const q=document.getElementById("q").value||"music";
-    return `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(q)}&maxResults=12&pageToken=${nextPageToken}&key=${API_KEY}`;
-  }
-  return `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=IN&videoCategoryId=10&maxResults=12&pageToken=${nextPageToken}&key=${API_KEY}`;
+function videoId(item){
+  if(!item||!item.id) return null;
+  if(typeof item.id==="string") return item.id;
+  return item.id.videoId;
 }
 
-function loadMore(){
-  fetch(buildUrl())
+function loadHome(){
+  homePage.innerHTML="";
+  fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=IN&videoCategoryId=10&maxResults=12&key=${API_KEY}`)
   .then(r=>r.json())
   .then(d=>{
-    nextPageToken=d.nextPageToken||"";
     d.items.forEach(item=>{
-      const id=getVideoId(item);
-      if(!id) return;
-
+      const id = videoId(item);
       const c=document.createElement("div");
       c.className="card";
-      c.innerHTML=`
-        <img src="${item.snippet.thumbnails.medium.url}">
-        <span>${item.snippet.title}</span>`;
+      c.innerHTML=`<img src="${item.snippet.thumbnails.medium.url}"><span>${item.snippet.title}</span>`;
       c.onclick=()=>playVideo(id);
-      feed.appendChild(c);
+      homePage.appendChild(c);
     });
   });
 }
 
-/* ================= NAV ================= */
-function goHome(){
-  mode="home";
-  feed.innerHTML="";
-  nextPageToken="";
-  history.pushState({}, "", "#home");
-  loadMore();
+function loadSearch(q){
+  searchResults.innerHTML="";
+  if(!q) return;
+
+  fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(q)}&maxResults=12&key=${API_KEY}`)
+  .then(r=>r.json())
+  .then(d=>{
+    d.items.forEach(item=>{
+      const id = videoId(item);
+      const c=document.createElement("div");
+      c.className="card";
+      c.innerHTML=`<img src="${item.snippet.thumbnails.medium.url}"><span>${item.snippet.title}</span>`;
+      c.onclick=()=>playVideo(id);
+      searchResults.appendChild(c);
+    });
+  });
 }
 
+/* ================= SEARCH ================= */
 function goSearch(){
-  mode="search";
-  feed.innerHTML="";
-  nextPageToken="";
-  history.pushState({}, "", "#search");
-}
-
-function doSearch(){
-  goSearch();
-  loadMore();
+  const q=document.getElementById("searchInput").value.trim();
+  navigate("search", q);
 }
 
 /* INIT */
-if(location.hash.startsWith("#watch=")){
-  playVideo(location.hash.split("=")[1],false);
-}else{
-  goHome();
-}
+navigate("home",null,false);
 </script>
 
 </body>
