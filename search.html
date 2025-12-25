@@ -1,0 +1,43 @@
+1<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Search</title>
+<link rel="stylesheet" href="assets/common.css">
+</head>
+<body>
+
+<header>
+  <input id="q" placeholder="Search songs…">
+  <button onclick="search()">Search</button>
+</header>
+
+<div id="results" class="feed"></div>
+
+<nav>
+  <a href="index.html">🏠 Home</a>
+</nav>
+
+<script>
+const API_KEY = "AIzaSyDegWP6p4oz6QHaKe55UHE50KGbviyycfU";
+const results = document.getElementById("results");
+
+function search(){
+  const q = document.getElementById("q").value;
+  results.innerHTML="";
+  fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(q)}&maxResults=20&key=${API_KEY}`)
+  .then(r=>r.json()).then(d=>{
+    d.items.forEach(v=>{
+      const c=document.createElement("div");
+      c.className="card";
+      c.innerHTML = `
+        <img src="${v.snippet.thumbnails.medium.url}">
+        <span>${v.snippet.title}</span>`;
+      c.onclick = ()=> location.href = `player.html?id=${v.id.videoId}`;
+      results.appendChild(c);
+    });
+  });
+}
+</script>
+</body>
+</html>
