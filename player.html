@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Player</title>
+<link rel="stylesheet" href="assets/common.css">
+</head>
+<body>
+
+<div class="player curved">
+  <iframe id="player" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+</div>
+
+<div id="related" class="feed"></div>
+
+<nav>
+  <button onclick="history.back()">⬅ Back</button>
+</nav>
+
+<script>
+const API_KEY = "AIzaSyDegWP6p4oz6QHaKe55UHE50KGbviyycfU";
+const params = new URLSearchParams(location.search);
+const id = params.get("id");
+
+const player = document.getElementById("player");
+player.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1`;
+
+fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&relatedToVideoId=${id}&maxResults=12&key=${API_KEY}`)
+.then(r=>r.json()).then(d=>{
+  d.items.forEach(v=>{
+    const c=document.createElement("div");
+    c.className="card";
+    c.innerHTML = `
+      <img src="${v.snippet.thumbnails.medium.url}">
+      <span>${v.snippet.title}</span>`;
+    c.onclick = ()=> location.href = `player.html?id=${v.id.videoId}`;
+    related.appendChild(c);
+  });
+});
+</script>
+</body>
+</html>
